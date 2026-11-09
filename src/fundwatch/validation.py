@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from decimal import Decimal, InvalidOperation
 
 
 def parse_reference_date(value: str) -> date:
@@ -15,3 +16,22 @@ def parse_reference_date(value: str) -> date:
 
     parsed_date = datetime.strptime(value, "%Y-%m-%d").date()
     return parsed_date
+
+
+def parse_decimal(value: str, required: bool = True):
+    if value == "":
+        if required:
+            raise ValueError("Decimal value is required.")
+
+        return None
+
+    try:
+        decimal_value = Decimal(value)
+
+        if not decimal_value.is_finite():
+            raise ValueError("Invalid decimal value.")
+
+        return decimal_value
+
+    except InvalidOperation as exc:
+        raise ValueError("Invalid decimal value.") from exc
