@@ -35,3 +35,22 @@ def parse_decimal(value: str, required: bool = True):
 
     except InvalidOperation as exc:
         raise ValueError("Invalid decimal value.") from exc
+
+
+def parse_integer(value: str, required: bool = True):
+    if value == "" and required:
+        raise ValueError("Integer value is required.")
+
+    if value == "" and required is False:
+        return None
+
+    if value:
+        try:
+            number = int(value)
+        except ValueError:
+            raise ValueError("Invalid integer value.")
+
+        if number < 0:
+            raise ValueError("Integer value cannot be negative.")
+
+        return number

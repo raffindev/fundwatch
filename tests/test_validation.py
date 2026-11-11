@@ -1,8 +1,9 @@
+import re
 import pytest
 from datetime import date
 from decimal import Decimal
 
-from src.fundwatch.validation import parse_reference_date, parse_decimal
+from src.fundwatch.validation import parse_reference_date, parse_decimal, parse_integer
 
 # Reference date validation tests
 INVALID_FORMAT_INPUTS = [
@@ -24,7 +25,6 @@ INVALID_CALENDAR_DATES = [
 ]
 
 
-# Funções de teste de parse_reference_date()
 def test_parse_reference_date_valid():
     result = parse_reference_date("2026-10-15")
     assert result == date(2026, 10, 15)
@@ -77,7 +77,6 @@ INVALID_DECIMAL_INPUTS = [
 ]
 
 
-# Funções de teste de parse_decimal()
 @pytest.mark.parametrize("value, expected", VALID_DECIMAL_INPUTS)
 def test_parse_decimal_valid(value, expected):
     result = parse_decimal(value)
@@ -105,3 +104,35 @@ def test_parse_decimal_invalid(value):
         match=r"^Invalid decimal value\.$",
     ):
         parse_decimal(value)
+
+
+# Integer validation tests
+
+VALID_INTEGER_INPUTS = [
+    ("150", True, 150),
+    ("0", True, 0),
+    ("0015", True, 15),
+    ("", False, None),
+]
+
+INVALID_INTEGER_INPUTS = [
+    ("", True, "Integer value is required."),
+    ("-5", True, "Integer value cannot be negative."),
+    ("abc", True, "Invalid integer value."),
+    ("12.5", True, "Invalid integer value."),
+    ("NaN", True, "Invalid integer value."),
+    ("Infinity", True, "Invalid integer value."),
+    ("   ", True, "Invalid integer value."),
+]
+
+
+@pytest.mark.parametrize("value, required, expected", VALID_INTEGER_INPUTS)
+def test_parse_integer_valid(value, required, expected):
+    result = parse_integer(value, required=required)
+    assert result == expected
+
+
+@pytest.mark.parametrize("value, required, error_message", INVALID_INTEGER_INPUTS)
+def test_parse_integer_invalid(value, required, error_message):
+    with pytest.raises(ValueError, match=f"^{re.escape(error_message)}$"):
+        parse_integer(value, required=required)
