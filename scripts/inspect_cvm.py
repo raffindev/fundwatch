@@ -1,6 +1,6 @@
 import csv
 from pathlib import Path
-from src.fundwatch.validation import parse_decimal, parse_integer
+from fundwatch.validation import parse_decimal, parse_integer
 
 
 def inspect_csv(filename):

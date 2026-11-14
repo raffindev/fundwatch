@@ -3,7 +3,7 @@ import pytest
 from datetime import date
 from decimal import Decimal
 
-from src.fundwatch.validation import parse_reference_date, parse_decimal, parse_integer
+from fundwatch.validation import parse_reference_date, parse_decimal, parse_integer
 
 # Reference date validation tests
 INVALID_FORMAT_INPUTS = [

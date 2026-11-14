@@ -164,3 +164,27 @@ def create_import_attempt(
 
             result = cursor.fetchone()
             return result[0]
+
+
+def has_processing_import(
+    file_hash: str,
+    connection: Connection | None = None,
+) -> bool:
+    context = nullcontext(connection) if connection is not None else get_connection()
+
+    with context as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM import_runs
+                    WHERE file_hash = %s
+                      AND status = 'PROCESSING'
+                )
+                """,
+                (file_hash,),
+            )
+
+            result = cursor.fetchone()
+            return bool(result[0])

@@ -1,5 +1,5 @@
-from src.fundwatch.database import get_connection
-from src.fundwatch.import_repository import (
+from fundwatch.database import get_connection
+from fundwatch.import_repository import (
     create_import_run,
     has_successful_import,
     update_import_run,
