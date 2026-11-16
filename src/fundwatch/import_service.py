@@ -1,4 +1,5 @@
 from pathlib import Path
+from time import perf_counter
 
 from psycopg import Connection
 
@@ -25,6 +26,7 @@ from .daily_report_repository import (
 )
 
 IMPORT_LOCK_KEY = 824017351
+PROGRESS_INTERVAL = 10_000
 
 
 def acquire_global_import_lock(connection: Connection) -> None:
@@ -98,6 +100,15 @@ def import_cvm_file(
     if not file_path.is_file():
         raise FileNotFoundError(f"File not found: {file_path}")
 
+    started_at = perf_counter()
+
+    print(
+        "\n[FundWatch] Starting CVM import\n"
+        f"File: {file_path.name}\n"
+        f"Schema: {schema}\n",
+        flush=True,
+    )
+
     file_hash = calculate_file_hash(file_path)
 
     # --------------------------------------------------
@@ -163,6 +174,11 @@ def import_cvm_file(
     if processing_import:
         raise ValueError("File import rejected: another import is already in progress.")
 
+    print(
+        f"[FundWatch] Import run {import_run_id} created.\n" "Processing records...",
+        flush=True,
+    )
+
     # --------------------------------------------------
     # 2. Processing of records
     # --------------------------------------------------
@@ -226,6 +242,23 @@ def import_cvm_file(
                 else:
                     raise RuntimeError(f"Unexpected daily report result: {result}")
 
+                # --------------------------------------
+                # Progress reporting
+                # --------------------------------------
+
+                if total_records % PROGRESS_INTERVAL == 0:
+                    elapsed = perf_counter() - started_at
+
+                    print(
+                        f"[Progress] "
+                        f"Processed: {total_records:,} | "
+                        f"Inserted: {inserted:,} | "
+                        f"Unchanged: {unchanged:,} | "
+                        f"Revised: {revised:,} | "
+                        f"Elapsed: {elapsed:.1f}s",
+                        flush=True,
+                    )
+
             update_import_run(
                 import_run_id=import_run_id,
                 status="SUCCESS",
@@ -235,7 +268,22 @@ def import_cvm_file(
                 connection=connection,
             )
 
+        # The connection context has exited successfully.
+        # The transaction has been committed.
+
     except Exception as exc:
+        elapsed = perf_counter() - started_at
+
+        print(
+            "\n[FundWatch] Import failed.\n"
+            f"Import run: {import_run_id}\n"
+            f"Processed before failure: {total_records:,}\n"
+            f"Elapsed: {elapsed:.1f}s\n"
+            f"Error: {exc}\n"
+            "The processing transaction was rolled back.",
+            flush=True,
+        )
+
         with get_connection(
             db_name=db_name,
             schema=schema,
@@ -257,14 +305,20 @@ def import_cvm_file(
     # 3. Result
     # --------------------------------------------------
 
+    elapsed = perf_counter() - started_at
+
     print(
-        f"Import run: {import_run_id} | "
-        f"Total: {total_records} | "
-        f"Inserted: {inserted} | "
-        f"Unchanged: {unchanged} | "
-        f"Revised: {revised} | "
-        f"Duplicates: {duplicates} | "
-        f"Missing subclasses: {missing_subclass}"
+        "\n[FundWatch] Import completed successfully.\n"
+        "Transaction committed.\n"
+        f"Import run: {import_run_id}\n"
+        f"Total: {total_records:,}\n"
+        f"Inserted: {inserted:,}\n"
+        f"Unchanged: {unchanged:,}\n"
+        f"Revised: {revised:,}\n"
+        f"Duplicates: {duplicates:,}\n"
+        f"Missing subclasses: {missing_subclass:,}\n"
+        f"Elapsed: {elapsed:.1f}s\n",
+        flush=True,
     )
 
     return import_run_id

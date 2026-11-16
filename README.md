@@ -1,208 +1,246 @@
 # FundWatch
 
-**Plataforma de ingestão, validação e consulta de dados históricos de fundos de investimento.**
+**Pipeline backend para ingestão, validação, versionamento e armazenamento de informes diários de fundos de investimento da CVM.**
 
-![Python](https://img.shields.io/badge/Python-Backend-3776AB?logo=python&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-4169E1?logo=postgresql&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-Planejado-009688?logo=fastapi&logoColor=white)
-![Status](https://img.shields.io/badge/Status-Em%20desenvolvimento-orange)
+![Python](https://img.shields.io/badge/Python-3.14-3776AB?logo=python&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-4169E1?logo=postgresql&logoColor=white)
+![pytest](https://img.shields.io/badge/pytest-94%20testes%20aprovados-0A9EDC?logo=pytest&logoColor=white)
+![Status](https://img.shields.io/badge/Status-v0.1%20em%20valida%C3%A7%C3%A3o-orange)
 
-> **Status:** Em desenvolvimento — fase de análise e especificação.
+> **Status:** v0.1 — pipeline de importação funcional e validado com arquivo real da CVM. API REST ainda não implementada.
 >
-> **Idioma:** Português brasileiro. Uma versão em inglês da documentação será disponibilizada futuramente.
+> **Idioma:** Português brasileiro. Documentação em inglês planejada.
 
 ---
 
 ## Sobre o projeto
 
-O **FundWatch** é um projeto backend desenvolvido em Python, voltado ao processamento e à disponibilização de dados públicos de fundos de investimento brasileiros.
+O **FundWatch** é um projeto Python Backend desenvolvido para transformar arquivos públicos da Comissão de Valores Mobiliários (CVM) em dados financeiros estruturados, persistentes e rastreáveis.
 
-A plataforma utilizará informações oficiais da Comissão de Valores Mobiliários (CVM), transformando arquivos periódicos em dados históricos estruturados, persistentes e consultáveis por meio de uma API REST.
+A aplicação realiza a leitura de arquivos CSV, valida os registros, identifica fundos, controla importações, armazena informes diários no PostgreSQL e preserva o histórico de alterações financeiras.
 
-O objetivo é construir uma solução funcional, testável e reproduzível, aplicando práticas de engenharia de software ao tratamento de dados financeiros.
+O objetivo é construir uma solução reproduzível para processamento de dados financeiros, aplicando princípios de integridade, rastreabilidade, testes automatizados e separação de responsabilidades.
 
 ## O problema
 
-A utilização recorrente de dados públicos de fundos de investimento pode exigir processos manuais de obtenção, leitura, validação e consolidação de arquivos.
+O processamento recorrente de arquivos públicos de fundos de investimento apresenta desafios como:
 
-Esses processos apresentam desafios como:
+- Grandes volumes de dados.
+- Validação de tipos e formatos.
+- Risco de duplicação durante reimportações.
+- Correções e reapresentações de informações.
+- Necessidade de histórico e auditoria.
+- Recuperação consistente após falhas.
 
-- Repetição de atividades de importação e preparação dos dados.
-- Dificuldade de consulta em grandes volumes de registros.
-- Risco de inconsistências e registros incompletos.
-- Duplicação de informações durante reprocessamentos.
-- Necessidade de tratar correções e reapresentações da fonte.
-- Dificuldade de rastrear falhas e resultados das importações.
+O FundWatch centraliza essas responsabilidades em um pipeline backend.
 
-O FundWatch propõe centralizar essas responsabilidades em um serviço backend, reduzindo a dependência de manipulações manuais e estabelecendo mecanismos verificáveis de integridade e rastreabilidade.
+Consulte a [Definição do Problema](docs/product/problem-statement.md).
 
-Para uma análise detalhada, consulte a [Definição do Problema](docs/product/problem-statement.md).
+## Funcionalidades implementadas
 
-## Funcionalidades previstas
+| Funcionalidade           | Descrição                                                    |
+| ------------------------ | ------------------------------------------------------------ |
+| Leitura CSV              | Processamento dos informes diários da CVM                    |
+| Validação                | Verificação de datas, valores decimais, inteiros e registros |
+| Persistência             | Armazenamento relacional no PostgreSQL                       |
+| Identificação de fundos  | Cadastro e reutilização de fundos por CNPJ                   |
+| Controle de duplicidades | Detecção de chaves repetidas no arquivo                      |
+| Idempotência de arquivo  | Controle de reimportação por hash SHA-256                    |
+| Versionamento            | Preservação de alterações financeiras por revisões           |
+| Auditoria                | Registro de execuções e tentativas de importação             |
+| Transações               | Commit em caso de sucesso e rollback em caso de falha        |
+| Progresso                | Acompanhamento a cada 10.000 registros                       |
+| Testes                   | Testes automatizados com pytest                              |
 
-A primeira versão (V1) terá como objetivo implementar:
-
-| Funcionalidade          | Descrição                                            |
-| ----------------------- | ---------------------------------------------------- |
-| Ingestão de dados       | Processamento de arquivos oficiais da CVM            |
-| Validação               | Verificação de estrutura, tipos e consistência       |
-| Tratamento de rejeições | Identificação de registros inválidos e seus motivos  |
-| Persistência histórica  | Armazenamento normalizado em PostgreSQL              |
-| Idempotência            | Reprocessamento sem duplicação de registros          |
-| Atualizações            | Tratamento de registros corrigidos ou reapresentados |
-| Consultas históricas    | Pesquisa por fundo e intervalo de datas              |
-| Rastreabilidade         | Histórico de execuções e resultados de importação    |
-| API REST                | Disponibilização de consultas documentadas           |
-
-**Importante:** as funcionalidades acima representam o escopo planejado da V1 e ainda não estão disponíveis para utilização.
-
-A especificação detalhada encontra-se em [Requisitos do Sistema](docs/product/requirements.md).
+O pipeline é executado por linha de comando. A API REST permanece no planejamento.
 
 ## Fonte de dados
 
-O FundWatch utilizará como fonte primária o conjunto de dados públicos **Informe Diário de Fundos de Investimento**, disponibilizado pela CVM.
+O FundWatch utiliza o conjunto público **Informe Diário de Fundos de Investimento**, disponibilizado pela CVM.
 
-**Fonte oficial:**  
-https://dados.cvm.gov.br/dataset/fi-doc-inf_diario
+**Fonte oficial:** https://dados.cvm.gov.br/dataset/fi-doc-inf_diario
 
-Os arquivos contêm informações como:
+Entre os campos processados estão:
 
-- Identificação de fundo/classe e subclasse.
+- CNPJ do fundo/classe.
+- Identificação da subclasse, quando disponível.
 - Data de competência.
-- Patrimônio líquido.
-- Valor da cota.
 - Valor total da carteira.
+- Valor da cota.
+- Patrimônio líquido.
 - Captações e resgates.
 - Número de cotistas.
 
-A estrutura, a cobertura, as atualizações e as condições de utilização dos dados serão consideradas durante a implementação.
+O projeto é independente e não possui vínculo institucional ou endosso da CVM.
 
-O FundWatch é um projeto independente, sem vínculo institucional ou endosso da CVM.
+## Tecnologias utilizadas
 
-## Tecnologias
+| Tecnologia    | Finalidade                            |
+| ------------- | ------------------------------------- |
+| Python 3.14   | Implementação do backend              |
+| PostgreSQL 18 | Persistência e integridade relacional |
+| Psycopg 3     | Comunicação entre Python e PostgreSQL |
+| pytest        | Testes automatizados                  |
+| Git e GitHub  | Versionamento e documentação          |
 
-A arquitetura prevista utilizará:
+**Planejadas:** FastAPI, Docker Compose e integração contínua.
 
-| Tecnologia     | Finalidade                         |
-| -------------- | ---------------------------------- |
-| Python         | Linguagem principal                |
-| PostgreSQL     | Persistência de dados              |
-| FastAPI        | Desenvolvimento da API REST        |
-| pytest         | Testes automatizados               |
-| Docker Compose | Execução reproduzível dos serviços |
-| GitHub Actions | Integração contínua                |
+## Arquitetura
 
-A seleção de bibliotecas complementares será realizada conforme as necessidades concretas da implementação.
-
-## Arquitetura prevista
-
-O fluxo principal de processamento será:
+O pipeline segue o fluxo:
 
 ```text
-       Fonte oficial CVM
-               |
-               v
-        Leitura de arquivos
-               |
-               v
-       Validação de dados
-               |
-               v
-     Normalização e regras
-            de negócio
-               |
-               v
-           PostgreSQL
-               |
-               v
-           API REST
-               |
-               v
-      Aplicações consumidoras
+Arquivo CSV da CVM
+        |
+        v
+Leitura e validação
+        |
+        v
+Verificação de duplicidades
+        |
+        v
+Identificação dos fundos
+        |
+        v
+Comparação com informes existentes
+        |
+        +---- Novo registro ------> Inserção
+        |
+        +---- Sem alteração ------> Preservação
+        |
+        +---- Alterado -----------> Revisão histórica
+        |
+        v
+PostgreSQL
+        |
+        v
+Commit ou rollback
+        |
+        v
+Auditoria da importação
 ```
 
-O processamento também deverá produzir informações sobre registros rejeitados, atualizados e eventuais falhas de execução.
+O processamento utiliza transações e bloqueio consultivo do PostgreSQL para coordenar execuções concorrentes.
 
-A arquitetura definitiva e as decisões técnicas serão documentadas conforme o desenvolvimento avançar.
+## Execução do projeto
 
-## Estrutura do repositório
+### Pré-requisitos
 
-A estrutura atual da documentação é:
+- Python 3.14.
+- PostgreSQL 18.
+- Dependências Python do projeto instaladas.
+- Banco de dados e schema configurados.
+- Arquivo CSV da CVM disponível localmente.
+
+### Executar os testes
+
+Com o ambiente virtual ativado:
+
+```powershell
+python -m pytest -q
+```
+
+Resultado registrado na validação de 16/11/2026:
 
 ```text
-fundwatch/
-├── docs/
-│   └── product/
-│       ├── problem-statement.md
-│       └── requirements.md
-├── .gitignore
-└── README.md
+94 passed in 4.55s
 ```
 
-A estrutura será expandida progressivamente para incluir código-fonte, testes, documentação de domínio e decisões arquiteturais.
+### Importar um arquivo da CVM
 
-Não serão criados módulos ou diretórios sem responsabilidades definidas.
+Exemplo de execução no ambiente de integração:
+
+```powershell
+python scripts/import_cvm.py data/raw/inf_diario_fi_202610.csv --schema fundwatch_test
+```
+
+O schema `fundwatch_test` é utilizado para integração. O schema principal do projeto é `fundwatch`.
+
+O banco e o schema devem estar previamente configurados. A execução do comando não substitui a preparação do ambiente PostgreSQL.
+
+Durante a importação, o terminal apresenta mensagens de progresso a cada 10.000 registros, incluindo contadores e tempo decorrido.
+
+Os contadores intermediários representam registros processados; a persistência somente é confirmada após o commit.
+
+## Resultados da validação com dados reais
+
+Em **16 de novembro de 2026**, o FundWatch processou integralmente o arquivo `inf_diario_fi_202610.csv`.
+
+| Indicador               |         Resultado |
+| ----------------------- | ----------------: |
+| Registros processados   |           537.880 |
+| Registros inseridos     |           537.880 |
+| Fundos únicos           |            25.507 |
+| Registros inalterados   |                 0 |
+| Registros revisados     |                 0 |
+| Duplicidades detectadas |                 0 |
+| Registros sem subclasse |           516.310 |
+| Tempo total             |    203,0 segundos |
+| Vazão média aproximada  | 2.650 registros/s |
+
+**Verificações realizadas no PostgreSQL:**
+
+- 25.507 fundos persistidos.
+- 537.880 informes diários persistidos.
+- 537.880 informes marcados como atuais.
+- Nenhuma revisão na primeira importação.
+- Nenhuma duplicidade encontrada entre informes atuais pela combinação de fundo, subclasse e data.
+
+Esses resultados correspondem a uma execução local, com o arquivo e ambiente descritos. Não representam garantia de desempenho em outros ambientes.
+
+## Regras de integridade
+
+O FundWatch adota as seguintes regras:
+
+1. Uma importação já concluída com sucesso não deve ser repetida para o mesmo arquivo.
+2. Registros duplicados dentro do CSV são rejeitados.
+3. A ausência de subclasse é permitida.
+4. Informes atuais são identificados pela combinação de fundo, subclasse e data de referência.
+5. Informações financeiras alteradas devem gerar histórico de revisão.
+6. Falhas durante o processamento devem provocar rollback da transação.
+7. Tentativas e execuções devem ser registradas para auditoria.
 
 ## Documentação
 
-| Documento                                                   | Conteúdo                                            |
-| ----------------------------------------------------------- | --------------------------------------------------- |
-| [Definição do Problema](docs/product/problem-statement.md)  | Contexto, público-alvo, problema e solução proposta |
-| [Especificação de Requisitos](docs/product/requirements.md) | Requisitos, regras de negócio e critérios de aceite |
+| Documento                                                  | Conteúdo                             |
+| ---------------------------------------------------------- | ------------------------------------ |
+| [Definição do Problema](docs/product/problem-statement.md) | Problema, contexto e objetivos       |
+| [Requisitos do Sistema](docs/product/requirements.md)      | Requisitos e regras de negócio       |
+| [Análise do Domínio](docs/domain/analysis.md)              | Entidades e comportamento do domínio |
+| [Modelo de Dados](docs/domain/data-model.md)               | Estrutura relacional e integridade   |
 
-Novos documentos serão adicionados conforme a modelagem, a arquitetura e a implementação evoluírem.
+## Próximas etapas
 
-## Desenvolvimento e execução
-
-O FundWatch encontra-se na fase inicial de análise e especificação.
-
-A aplicação ainda não possui uma versão executável.
-
-As instruções de instalação, configuração do ambiente, execução da API, importação de dados e utilização do Docker Compose serão incluídas quando essas funcionalidades estiverem implementadas e verificadas.
-
-## Estratégia de qualidade
-
-O desenvolvimento será orientado por:
-
-- Separação de responsabilidades.
-- Integridade e precisão dos dados.
-- Tratamento explícito de erros.
-- Testes unitários e de integração.
-- Reprocessamento idempotente.
-- Documentação de decisões técnicas.
-- Versionamento organizado em branches.
-- Integração contínua.
-
-Os requisitos deverão possuir critérios de aceite verificáveis, permitindo relacionar funcionalidades implementadas aos testes correspondentes.
-
-## Roadmap
-
-- [x] Definição inicial do problema e público-alvo.
-- [x] Especificação inicial de requisitos e regras de negócio.
-- [x] Identificação do dicionário de dados da CVM.
-- [ ] Análise reproduzível de um arquivo real.
-- [ ] Modelagem do domínio e do banco de dados.
-- [ ] Implementação do pipeline de ingestão e validação.
-- [ ] Persistência e reprocessamento idempotente.
-- [ ] Implementação da API REST.
-- [ ] Testes automatizados e integração contínua.
-- [ ] Containerização com Docker Compose.
-- [ ] Documentação de instalação e demonstração da V1.
+- [x] Análise do problema e definição de requisitos.
+- [x] Inspeção de arquivo real da CVM.
+- [x] Modelagem inicial do domínio e banco de dados.
+- [x] Leitura e validação dos registros.
+- [x] Persistência transacional.
+- [x] Controle de duplicidades e reimportações.
+- [x] Implementação do versionamento de informes.
+- [x] Auditoria de importações.
+- [x] Indicador de progresso e medição de desempenho.
+- [x] Primeira importação integral validada no PostgreSQL.
+- [ ] Ampliar testes de reimportação, revisão histórica e recuperação após interrupção.
+- [ ] Implementar API REST com FastAPI.
+- [ ] Preparar execução reproduzível com Docker Compose.
+- [ ] Configurar integração contínua.
+- [ ] Publicar documentação de instalação completa.
 
 ## Limitações
 
-A V1 não incluirá autenticação, integração com contas de corretoras, execução de ordens financeiras, recomendações de investimento ou previsões de rentabilidade.
+A v0.1 concentra-se no pipeline de ingestão e persistência. Ainda não oferece API REST, interface gráfica ou implantação automatizada.
 
-O FundWatch não constitui uma plataforma de negociação ou aconselhamento financeiro.
+O FundWatch não executa operações financeiras, não fornece recomendações de investimento e não constitui uma plataforma de negociação.
 
-A conclusão técnica do projeto não será apresentada como evidência de homologação regulatória, validação em produção ou utilização por instituições financeiras.
+A validação local não representa homologação regulatória ou utilização em ambiente de produção.
 
 ## Licença
 
 A licença do código-fonte será definida antes da publicação pública do repositório.
 
-Os dados utilizados pertencem às respectivas fontes e estão sujeitos às condições de utilização estabelecidas pelos seus responsáveis.
+Os dados da CVM estão sujeitos às condições de utilização estabelecidas pela fonte oficial.
 
 ---
 
-**FundWatch — Transformando dados públicos financeiros em informações estruturadas, rastreáveis e consultáveis.**
+**FundWatch — Dados financeiros públicos com integridade, histórico e rastreabilidade.**

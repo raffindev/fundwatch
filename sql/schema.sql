@@ -61,7 +61,7 @@ CREATE TABLE fundwatch.import_attempts (
 CREATE TABLE fundwatch.funds (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     cnpj VARCHAR(18) NOT NULL UNIQUE,
-    class_type CHAR(1) NOT NULL,
+    class_type VARCHAR(30) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
