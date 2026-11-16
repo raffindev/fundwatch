@@ -4,6 +4,7 @@ from fundwatch.import_repository import (
     has_successful_import,
     update_import_run,
     create_import_attempt,
+    has_processing_import,
 )
 
 
@@ -382,6 +383,56 @@ def test_create_import_attempt_already_imported():
 
         assert record[0] == "ALREADY_IMPORTED"
         assert record[1] is None
+
+    finally:
+        connection.rollback()
+        connection.close()
+
+
+def test_has_processing_import():
+    connection = get_connection(
+        db_name="sql_lab",
+        schema="fundwatch_test",
+    )
+
+    try:
+        file_hash = "e" * 64
+
+        assert (
+            has_processing_import(
+                file_hash,
+                connection=connection,
+            )
+            is False
+        )
+
+        import_run_id = create_import_run(
+            filename="processing_test.csv",
+            file_hash=file_hash,
+            connection=connection,
+        )
+
+        assert (
+            has_processing_import(
+                file_hash,
+                connection=connection,
+            )
+            is True
+        )
+
+        update_import_run(
+            import_run_id=import_run_id,
+            status="SUCCESS",
+            connection=connection,
+        )
+
+        assert (
+            has_processing_import(
+                file_hash,
+                connection=connection,
+            )
+            is False
+        )
 
     finally:
         connection.rollback()

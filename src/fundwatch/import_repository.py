@@ -1,5 +1,7 @@
 from contextlib import nullcontext
+
 from psycopg import Connection
+
 from .database import get_connection
 
 
@@ -176,9 +178,7 @@ def create_import_attempt(
         raise ValueError("Accepted import attempts require an import run ID.")
 
     if outcome != "ACCEPTED" and import_run_id is not None:
-        raise ValueError(
-            "Non-accepted import attempts must not have " "an import run ID."
-        )
+        raise ValueError("Non-accepted import attempts must not have an import run ID.")
 
     connection_context = (
         nullcontext(connection) if connection is not None else get_connection()

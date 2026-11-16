@@ -34,3 +34,10 @@ def test_read_cvm_csv_without_records(tmp_path):
     reader = read_cvm_csv(file_path)
     with pytest.raises(StopIteration):
         next(reader)
+
+
+def test_read_cvm_csv_file_not_found(tmp_path):
+    file_path = tmp_path / "nonexistent.csv"
+
+    with pytest.raises(FileNotFoundError):
+        list(read_cvm_csv(file_path))

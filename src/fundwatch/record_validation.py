@@ -29,7 +29,7 @@ def optional_field(row: dict, field_name: str) -> str | None:
     if value is None or not isinstance(value, str):
         raise ValueError(f"Field {field_name}: Invalid value.")
 
-    return value or None
+    return value.strip() or None
 
 
 def validate_record(row: dict, row_number: int | None = None) -> dict:
@@ -39,13 +39,26 @@ def validate_record(row: dict, row_number: int | None = None) -> dict:
             "class_type": require_field(row, "TP_FUNDO_CLASSE"),
             "subclass_id": optional_field(row, "ID_SUBCLASSE"),
             "reference_date": validate_field(row, "DT_COMPTC", parse_reference_date),
-            "total_value": validate_field(row, "VL_TOTAL", parse_decimal),
-            "quota_value": validate_field(row, "VL_QUOTA", parse_decimal),
-            "net_equity": validate_field(row, "VL_PATRIM_LIQ", parse_decimal),
-            "inflow": validate_field(row, "CAPTC_DIA", parse_decimal),
-            "outflow": validate_field(row, "RESG_DIA", parse_decimal),
-            "shareholders": validate_field(row, "NR_COTST", parse_integer),
+            "total_value": validate_field(
+                row, "VL_TOTAL", lambda value: parse_decimal(value, required=False)
+            ),
+            "quota_value": validate_field(
+                row, "VL_QUOTA", lambda value: parse_decimal(value, required=False)
+            ),
+            "net_equity": validate_field(
+                row, "VL_PATRIM_LIQ", lambda value: parse_decimal(value, required=False)
+            ),
+            "inflow": validate_field(
+                row, "CAPTC_DIA", lambda value: parse_decimal(value, required=False)
+            ),
+            "outflow": validate_field(
+                row, "RESG_DIA", lambda value: parse_decimal(value, required=False)
+            ),
+            "shareholders": validate_field(
+                row, "NR_COTST", lambda value: parse_integer(value, required=False)
+            ),
         }
+
     except ValueError as exc:
         if row_number is not None:
             raise ValueError(f"CSV row {row_number}: {exc}") from exc

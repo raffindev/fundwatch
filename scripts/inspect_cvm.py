@@ -1,4 +1,5 @@
 import csv
+import sys
 from pathlib import Path
 from fundwatch.validation import parse_decimal, parse_integer
 
@@ -128,4 +129,7 @@ def inspect_csv(filename):
 
 
 if __name__ == "__main__":
-    inspect_csv("inf_diario_fi_202610.csv")
+    if len(sys.argv) != 2:
+        raise SystemExit("Uso: python -m scripts.inspect_cvm <arquivo.csv>")
+
+    inspect_csv(sys.argv[1])

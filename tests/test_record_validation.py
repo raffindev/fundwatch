@@ -71,3 +71,22 @@ def test_validate_record_invalid_with_row_number(valid_row):
 
     with pytest.raises(ValueError, match=r"CSV row 15234: Field VL_QUOTA"):
         validate_record(valid_row, row_number=15234)
+
+
+@pytest.mark.parametrize(
+    "field_name,result_key",
+    [
+        ("VL_TOTAL", "total_value"),
+        ("VL_QUOTA", "quota_value"),
+        ("VL_PATRIM_LIQ", "net_equity"),
+        ("CAPTC_DIA", "inflow"),
+        ("RESG_DIA", "outflow"),
+        ("NR_COTST", "shareholders"),
+    ],
+)
+def test_validate_record_optional_numeric_empty(valid_row, field_name, result_key):
+    valid_row[field_name] = ""
+
+    result = validate_record(valid_row)
+
+    assert result[result_key] is None

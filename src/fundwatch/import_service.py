@@ -1,4 +1,5 @@
 from pathlib import Path
+
 from psycopg import Connection
 
 from .database import get_connection
@@ -170,7 +171,9 @@ def import_cvm_file(
     inserted = 0
     unchanged = 0
     revised = 0
+    duplicates = 0
     missing_subclass = 0
+
     seen_keys = set()
 
     try:
@@ -191,6 +194,8 @@ def import_cvm_file(
                 )
 
                 if record_key in seen_keys:
+                    duplicates += 1
+
                     raise ValueError(
                         "Duplicate record in CSV: "
                         f"CNPJ={record['cnpj']}, "
@@ -225,7 +230,7 @@ def import_cvm_file(
                 import_run_id=import_run_id,
                 status="SUCCESS",
                 total_records=total_records,
-                duplicates=0,
+                duplicates=duplicates,
                 missing_subclass=missing_subclass,
                 connection=connection,
             )
@@ -240,7 +245,7 @@ def import_cvm_file(
                 import_run_id=import_run_id,
                 status="FAILED",
                 total_records=total_records,
-                duplicates=0,
+                duplicates=duplicates,
                 missing_subclass=missing_subclass,
                 error_message=str(exc),
                 connection=connection,
@@ -258,6 +263,7 @@ def import_cvm_file(
         f"Inserted: {inserted} | "
         f"Unchanged: {unchanged} | "
         f"Revised: {revised} | "
+        f"Duplicates: {duplicates} | "
         f"Missing subclasses: {missing_subclass}"
     )
 

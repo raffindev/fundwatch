@@ -1,3 +1,5 @@
+import pytest
+
 from datetime import date
 from decimal import Decimal
 
@@ -24,3 +26,22 @@ def test_read_validated_records(tmp_path):
     assert record["reference_date"] == date(2026, 10, 15)
     assert record["quota_value"] == Decimal("1.234567890123")
     assert record["shareholders"] == 150
+
+
+def test_read_validated_records_invalid_row(tmp_path):
+    csv_file = tmp_path / "invalid_cvm.csv"
+
+    csv_file.write_text(
+        "TP_FUNDO_CLASSE;CNPJ_FUNDO_CLASSE;ID_SUBCLASSE;"
+        "DT_COMPTC;VL_TOTAL;VL_QUOTA;VL_PATRIM_LIQ;"
+        "CAPTC_DIA;RESG_DIA;NR_COTST\n"
+        "1;12345678000190;;2026-10-15;1750000.50;"
+        "abc;1500000.75;50000.00;25000.00;150\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        ValueError,
+        match=r"CSV row 2: Field VL_QUOTA",
+    ):
+        list(read_validated_records(csv_file))
