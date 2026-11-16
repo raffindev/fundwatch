@@ -1,5 +1,7 @@
 from contextlib import nullcontext
+
 from psycopg import Connection
+
 from .database import get_connection
 
 
@@ -24,9 +26,11 @@ def create_import_run(
             )
 
             result = cursor.fetchone()
-            import_run_id = result[0]
 
-    return import_run_id
+            if result is None:
+                raise RuntimeError("Failed to retrieve created import run ID.")
+
+            return result[0]
 
 
 def has_successful_import(
@@ -53,7 +57,40 @@ def has_successful_import(
 
             result = cursor.fetchone()
 
-            return result[0]
+            if result is None:
+                raise RuntimeError("Failed to check successful import.")
+
+            return bool(result[0])
+
+
+def has_processing_import(
+    file_hash: str,
+    connection: Connection | None = None,
+) -> bool:
+    connection_context = (
+        nullcontext(connection) if connection is not None else get_connection()
+    )
+
+    with connection_context as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM import_runs
+                    WHERE file_hash = %s
+                      AND status = 'PROCESSING'
+                )
+                """,
+                (file_hash,),
+            )
+
+            result = cursor.fetchone()
+
+            if result is None:
+                raise RuntimeError("Failed to check processing import.")
+
+            return bool(result[0])
 
 
 def update_import_run(
@@ -70,11 +107,13 @@ def update_import_run(
     if status not in allowed_statuses:
         raise ValueError(f"Invalid final import status: {status}")
 
-    for name, value in {
+    counters = {
         "total_records": total_records,
         "duplicates": duplicates,
         "missing_subclass": missing_subclass,
-    }.items():
+    }
+
+    for name, value in counters.items():
         if value is not None and (type(value) is not int or value < 0):
             raise ValueError(f"{name} must be a non-negative integer.")
 
@@ -126,7 +165,11 @@ def create_import_attempt(
     reason: str | None = None,
     connection: Connection | None = None,
 ) -> int:
-    allowed_outcomes = {"ACCEPTED", "ALREADY_IMPORTED", "REJECTED"}
+    allowed_outcomes = {
+        "ACCEPTED",
+        "ALREADY_IMPORTED",
+        "REJECTED",
+    }
 
     if outcome not in allowed_outcomes:
         raise ValueError(f"Invalid import attempt outcome: {outcome}")
@@ -140,13 +183,19 @@ def create_import_attempt(
     connection_context = (
         nullcontext(connection) if connection is not None else get_connection()
     )
+
     with connection_context as conn:
         with conn.cursor() as cursor:
             cursor.execute(
                 """
                 INSERT INTO import_attempts (
-                    filename, file_hash, requested_by, target_table,
-                    outcome, import_run_id, reason
+                    filename,
+                    file_hash,
+                    requested_by,
+                    target_table,
+                    outcome,
+                    import_run_id,
+                    reason
                 )
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
@@ -163,4 +212,8 @@ def create_import_attempt(
             )
 
             result = cursor.fetchone()
+
+            if result is None:
+                raise RuntimeError("Failed to retrieve created import attempt ID.")
+
             return result[0]

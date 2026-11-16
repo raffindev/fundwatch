@@ -1,305 +1,383 @@
 # FundWatch — Especificação de Requisitos
 
 **Projeto:** FundWatch  
-**Documento:** Requisitos do Sistema  
-**Versão:** 1.0 — Especificação inicial da V1  
-**Status:** Proposta para validação técnica
+**Versão:** 0.1  
+**Status:** Implementação em validação  
+**Tecnologias:** Python, PostgreSQL, Psycopg 3 e pytest  
+**Fonte de dados:** Comissão de Valores Mobiliários (CVM)
 
 ---
 
 ## 1. Objetivo
 
-Este documento define os requisitos funcionais, as regras de negócio, os requisitos não funcionais e os critérios de aceite da primeira versão do FundWatch.
+Definir os requisitos funcionais, as regras de negócio, os requisitos não funcionais e os critérios de aceite do FundWatch v0.1.
 
-Seu propósito é estabelecer uma referência verificável para análise, implementação, testes e evolução do sistema.
+O documento estabelece uma referência para implementação, testes, validação e evolução do sistema.
 
-O problema, o público-alvo e a proposta de valor estão descritos em [Definição do Problema](problem-statement.md).
+A v0.1 concentra-se na importação de arquivos CSV da CVM, validação, persistência histórica, controle de duplicidades e auditoria.
 
-Os requisitos poderão ser refinados conforme a análise dos dados reais e a evolução da implementação. Alterações relevantes deverão ser registradas e justificadas.
+A API REST e outras funcionalidades de integração pertencem ao planejamento de versões posteriores.
 
-## 2. Escopo da V1
+## 2. Escopo
 
-A primeira versão compreenderá:
+### 2.1. Incluído na v0.1
 
-- Ingestão de arquivos oficiais de informes diários de fundos de investimento da CVM.
+- Leitura de arquivos CSV locais.
 - Validação de estrutura e registros.
-- Identificação e comunicação de inconsistências.
-- Persistência histórica em PostgreSQL.
-- Reprocessamento idempotente.
-- Tratamento de registros corrigidos ou reapresentados.
-- Consulta histórica por fundo e intervalo de datas.
-- Registro de resultados e falhas das importações.
-- Disponibilização de consultas por API REST.
+- Persistência em PostgreSQL.
+- Identificação de fundos e informes.
+- Prevenção de duplicidades.
+- Identificação de alterações financeiras.
+- Preservação de versões históricas.
+- Auditoria de tentativas e execuções.
+- Controle de concorrência.
+- Integridade transacional.
+- Execução por linha de comando.
+- Testes automatizados.
 
-O sistema utilizará dados públicos, sem integração com contas financeiras ou execução de operações de investimento.
+### 2.2. Fora do escopo da v0.1
 
-## 3. Requisitos Funcionais
+- API REST.
+- Interface web.
+- Download automático de arquivos da CVM.
+- Agendamento periódico de importações.
+- Autenticação de usuários.
+- Dashboard financeiro.
+- Recomendações de investimento.
+- Operações financeiras.
+- Infraestrutura distribuída.
 
-### RF-01 — Ingestão de dados oficiais
+## 3. Requisitos funcionais
 
-**Prioridade:** Obrigatória
+### RF-01 — Leitura de arquivos CSV
 
-O sistema deverá permitir a importação de arquivos de informes diários disponibilizados pela CVM, utilizando uma origem configurável.
+**Prioridade:** Obrigatória  
+**Situação:** Implementado; validação com arquivo completo em andamento
 
-**Critérios de aceite:**
-
-- CA-01.1: Um arquivo real compatível poderá ser processado.
-- CA-01.2: O sistema identificará falhas de leitura ou arquivos inacessíveis.
-- CA-01.3: A origem utilizada será identificável no registro da execução.
-
-### RF-02 — Validação de dados
-
-**Prioridade:** Obrigatória
-
-O sistema deverá verificar a compatibilidade dos dados recebidos com o esquema esperado.
-
-As verificações deverão considerar campos obrigatórios, tipos, formatos e regras de consistência aplicáveis.
-
-**Critérios de aceite:**
-
-- CA-02.1: Campos obrigatórios ausentes serão identificados.
-- CA-02.2: Valores incompatíveis com os tipos esperados serão identificados.
-- CA-02.3: Arquivos estruturalmente incompatíveis serão rejeitados com motivo explícito.
-
-### RF-03 — Tratamento de registros inválidos
-
-**Prioridade:** Obrigatória
-
-O sistema deverá identificar registros inválidos e disponibilizar informações suficientes para explicar sua rejeição.
+O sistema deve permitir a leitura de arquivos CSV compatíveis com o formato de informes diários da CVM.
 
 **Critérios de aceite:**
 
-- CA-03.1: Registros inválidos terão motivos de rejeição identificáveis.
-- CA-03.2: Registros válidos poderão ser processados quando houver erros isolados em outros registros.
-- CA-03.3: O relatório distinguirá registros aceitos, rejeitados e não processados, quando aplicável.
+- CA-01.1: O sistema aceita um caminho de arquivo local.
+- CA-01.2: O CSV é interpretado utilizando o delimitador esperado.
+- CA-01.3: Arquivos inexistentes produzem erro identificável.
+- CA-01.4: O processamento utiliza leitura iterativa, sem exigir o carregamento integral do arquivo em memória.
+- CA-01.5: Um arquivo real completo pode ser processado.
 
-### RF-04 — Persistência histórica
+### RF-02 — Validação de registros
 
-**Prioridade:** Obrigatória
+**Prioridade:** Obrigatória  
+**Situação:** Implementado
 
-O sistema deverá armazenar dados históricos normalizados em PostgreSQL, respeitando a integridade e a precisão das informações.
-
-**Critérios de aceite:**
-
-- CA-04.1: Registros válidos serão persistidos.
-- CA-04.2: Restrições de integridade impedirão estados incompatíveis com o modelo definido.
-- CA-04.3: Valores numéricos serão preservados conforme a precisão aplicável.
-- CA-04.4: Registros persistidos poderão ser recuperados posteriormente.
-
-### RF-05 — Reprocessamento idempotente
-
-**Prioridade:** Obrigatória
-
-O sistema deverá permitir reprocessamentos sem gerar duplicidades de registros lógicos.
+O sistema deve validar os dados recebidos antes da persistência.
 
 **Critérios de aceite:**
 
-- CA-05.1: Reimportar dados idênticos não produzirá registros duplicados.
-- CA-05.2: Reprocessamentos sem alterações preservarão os valores anteriormente armazenados.
-- CA-05.3: O resultado da execução permitirá identificar registros sem alteração.
+- CA-02.1: Campos obrigatórios ausentes são identificados.
+- CA-02.2: Datas incompatíveis são rejeitadas.
+- CA-02.3: Valores decimais inválidos são identificados.
+- CA-02.4: Valores inteiros incompatíveis são identificados.
+- CA-02.5: As mensagens de erro permitem identificar a incompatibilidade.
+- CA-02.6: Os dados financeiros preservam a precisão decimal aplicável.
 
-### RF-06 — Tratamento de atualizações
+### RF-03 — Identificação de fundos
 
-**Prioridade:** Obrigatória
+**Prioridade:** Obrigatória  
+**Situação:** Implementado
 
-O sistema deverá reconhecer registros previamente armazenados cujos valores tenham sido modificados na fonte e aplicar uma política documentada de atualização.
-
-**Critérios de aceite:**
-
-- CA-06.1: Registros existentes com informações alteradas serão identificados.
-- CA-06.2: A política definida será aplicada de maneira consistente.
-- CA-06.3: O resultado da execução informará a quantidade de registros atualizados.
-
-A política definitiva será estabelecida após a análise da identidade dos registros e das características dos arquivos reais.
-
-### RF-07 — Consulta histórica
-
-**Prioridade:** Obrigatória
-
-O sistema deverá permitir consultar registros históricos de um fundo ou classe em determinado intervalo de datas.
+O sistema deve identificar fundos ou classes pelo CNPJ informado pela CVM.
 
 **Critérios de aceite:**
 
-- CA-07.1: Será possível filtrar registros pelo identificador definido no modelo.
-- CA-07.2: Será possível informar um intervalo de datas.
-- CA-07.3: Consultas sem resultados retornarão uma resposta válida e documentada.
-- CA-07.4: Parâmetros inválidos produzirão erros claros.
+- CA-03.1: Um CNPJ existente não gera outro fundo equivalente.
+- CA-03.2: Um CNPJ ainda não cadastrado pode originar um novo registro.
+- CA-03.3: A classificação do fundo é armazenada conforme o formato aceito pelo esquema.
+- CA-03.4: A associação entre fundos e informes preserva a integridade referencial.
 
-### RF-08 — Histórico de importações
+### RF-04 — Persistência de informes
 
-**Prioridade:** Obrigatória
+**Prioridade:** Obrigatória  
+**Situação:** Implementado; validação integral pendente
 
-O sistema deverá registrar informações sobre cada execução de importação, incluindo seu resultado e eventuais falhas.
-
-**Critérios de aceite:**
-
-- CA-08.1: Cada execução terá um identificador próprio.
-- CA-08.2: O resultado distinguirá registros inseridos, atualizados, rejeitados e sem alteração, conforme aplicável.
-- CA-08.3: Falhas relevantes serão registradas sem exposição de credenciais ou dados sensíveis.
-- CA-08.4: Será possível consultar o resultado de uma execução.
-
-### RF-09 — API REST
-
-**Prioridade:** Obrigatória
-
-O sistema deverá disponibilizar consultas por meio de uma API REST implementada com FastAPI.
+O sistema deve armazenar informes financeiros em PostgreSQL.
 
 **Critérios de aceite:**
 
-- CA-09.1: Os endpoints necessários às consultas da V1 estarão disponíveis.
-- CA-09.2: Os contratos de entrada e saída estarão documentados.
-- CA-09.3: A documentação OpenAPI será disponibilizada.
-- CA-09.4: Entradas inválidas receberão respostas HTTP apropriadas.
+- CA-04.1: Cada informe está associado a um fundo.
+- CA-04.2: A data de competência é armazenada como `DATE`.
+- CA-04.3: Os indicadores financeiros utilizam tipos `NUMERIC`.
+- CA-04.4: A ausência de subclasse é permitida.
+- CA-04.5: As restrições SQL impedem estados incompatíveis.
+- CA-04.6: Os registros persistidos podem ser recuperados por consultas SQL.
 
-Os caminhos e contratos definitivos serão definidos durante o desenho da API.
+### RF-05 — Controle de duplicidades
 
----
+**Prioridade:** Obrigatória  
+**Situação:** Implementado
 
-## 4. Regras de Negócio
+O sistema deve impedir a duplicação indevida de informes.
 
-### RN-01 — Importação parcial controlada
+A chave de negócio é:
 
-Erros isolados em registros não deverão necessariamente impedir a importação dos demais registros válidos.
+`(fund_id, reference_date, subclass_id)`
 
-Falhas que comprometam a interpretação estrutural do arquivo deverão interromper o processamento.
+**Critérios de aceite:**
 
-### RN-02 — Justificativa das rejeições
+- CA-05.1: Registros duplicados dentro do mesmo arquivo são identificados.
+- CA-05.2: Subclasses ausentes são tratadas de maneira consistente.
+- CA-05.3: A importação não cria duas versões vigentes da mesma identidade.
+- CA-05.4: As restrições do banco complementam as validações da aplicação.
 
-Todo registro rejeitado deverá possuir uma justificativa identificável e informações suficientes para investigação.
+### RF-06 — Idempotência de arquivos
 
-### RN-03 — Unicidade dos registros
+**Prioridade:** Obrigatória  
+**Situação:** Implementado
 
-Um mesmo registro lógico não poderá ser armazenado múltiplas vezes.
+O sistema deve identificar arquivos já importados com sucesso.
 
-A chave de identificação será definida após a validação do esquema e dos dados reais.
+**Critérios de aceite:**
 
-### RN-04 — Idempotência
+- CA-06.1: O conteúdo do arquivo é identificado por hash SHA-256.
+- CA-06.2: Uma nova tentativa com arquivo anteriormente importado com sucesso é recusada.
+- CA-06.3: A recusa não duplica dados financeiros.
+- CA-06.4: A tentativa recusada permanece auditável.
 
-O reprocessamento de informações idênticas não deverá gerar duplicidades nem modificar desnecessariamente os valores persistidos.
+### RF-07 — Revisões históricas
 
-### RN-05 — Atualização de informações
+**Prioridade:** Obrigatória  
+**Situação:** Implementado; validação operacional em andamento
 
-Registros existentes que apresentem alterações deverão seguir uma política explícita e testável de atualização.
+O sistema deve identificar alterações em informes existentes e preservar a rastreabilidade das versões.
 
-### RN-06 — Integridade da persistência
+**Critérios de aceite:**
 
-Os resultados de uma importação deverão refletir as operações efetivamente confirmadas no banco de dados.
+- CA-07.1: Um informe existente pode ser comparado com novos valores recebidos.
+- CA-07.2: Valores inalterados não geram revisões desnecessárias.
+- CA-07.3: Valores modificados seguem a política de revisão.
+- CA-07.4: Somente uma versão permanece vigente para cada identidade de informe.
+- CA-07.5: Versões anteriores permanecem disponíveis para investigação.
 
-Falhas de persistência deverão seguir uma política transacional documentada.
+### RF-08 — Auditoria de importações
 
-### RN-07 — Rastreabilidade
+**Prioridade:** Obrigatória  
+**Situação:** Implementado
 
-Cada execução deverá produzir informações que permitam compreender seu resultado e investigar falhas relevantes.
+O sistema deve registrar tentativas e execuções de importação.
 
-### RN-08 — Consistência das consultas
+**Critérios de aceite:**
 
-As consultas deverão utilizar os dados efetivamente persistidos, respeitando os filtros e as regras de identificação definidos pelo domínio.
+- CA-08.1: Cada execução possui identificador próprio.
+- CA-08.2: O arquivo e seu hash são identificáveis.
+- CA-08.3: O estado da execução é registrado.
+- CA-08.4: Falhas controladas são registradas com mensagem de diagnóstico.
+- CA-08.5: Tentativas recusadas podem ser auditadas separadamente das execuções.
+- CA-08.6: Informações de auditoria podem ser consultadas no PostgreSQL.
 
----
+### RF-09 — Controle de concorrência
 
-## 5. Requisitos Não Funcionais
+**Prioridade:** Obrigatória  
+**Situação:** Implementado
+
+O sistema deve impedir importações simultâneas incompatíveis.
+
+**Critérios de aceite:**
+
+- CA-09.1: O controle utiliza mecanismos de sincronização no PostgreSQL.
+- CA-09.2: O sistema identifica arquivos já associados a importações em andamento.
+- CA-09.3: Tentativas incompatíveis são recusadas sem comprometer a integridade dos dados.
+- CA-09.4: As restrições SQL complementam o controle da aplicação.
+
+### RF-10 — Integridade transacional
+
+**Prioridade:** Obrigatória  
+**Situação:** Implementado
+
+A persistência financeira deve ocorrer de forma transacional.
+
+**Critérios de aceite:**
+
+- CA-10.1: Alterações financeiras são confirmadas apenas após o processamento bem-sucedido.
+- CA-10.2: Falhas antes da confirmação provocam rollback.
+- CA-10.3: O rollback não deixa registros financeiros parcialmente confirmados.
+- CA-10.4: A auditoria de falhas pode permanecer registrada independentemente do rollback financeiro.
+
+### RF-11 — Execução por linha de comando
+
+**Prioridade:** Obrigatória  
+**Situação:** Implementado
+
+O sistema deve disponibilizar um comando para iniciar importações.
+
+**Critérios de aceite:**
+
+- CA-11.1: O usuário pode informar o caminho do arquivo.
+- CA-11.2: O schema de destino pode ser selecionado entre os valores permitidos.
+- CA-11.3: Argumentos inválidos produzem mensagens identificáveis.
+- CA-11.4: O comando retorna código de saída apropriado nos cenários tratados.
+
+### RF-12 — Recuperação de execuções interrompidas
+
+**Prioridade:** Obrigatória para conclusão operacional  
+**Situação:** Pendente
+
+O sistema deve tratar execuções abandonadas após encerramento inesperado do processo.
+
+**Critérios de aceite:**
+
+- CA-12.1: Uma execução interrompida pode ser identificada com segurança.
+- CA-12.2: O mecanismo não confunde importações demoradas com execuções abandonadas.
+- CA-12.3: A recuperação preserva o histórico de auditoria.
+- CA-12.4: A recuperação permite novas tentativas legítimas.
+- CA-12.5: O procedimento é coberto por testes.
+
+## 4. Regras de negócio
+
+**RN-01 — Identidade do fundo**
+
+Um CNPJ normalizado deve corresponder a uma única entidade `Fund`.
+
+**RN-02 — Identidade do informe**
+
+Um informe é identificado por fundo, data de competência e subclasse opcional.
+
+**RN-03 — Subclasse ausente**
+
+A ausência de subclasse é válida e não deve permitir duplicações da mesma identidade.
+
+**RN-04 — Validação obrigatória**
+
+Registros incompatíveis com as regras de validação devem produzir erros identificáveis.
+
+**RN-05 — Atomicidade da importação**
+
+Na v0.1, uma falha durante o processamento impede a confirmação parcial dos dados financeiros da execução.
+
+A importação parcial de registros válidos, prevista na especificação inicial, não faz parte da política transacional atual.
+
+**RN-06 — Idempotência**
+
+Um arquivo concluído com sucesso não deve produzir uma nova importação financeira equivalente.
+
+**RN-07 — Revisões**
+
+Alterações nos indicadores de informes existentes devem preservar o histórico de versões.
+
+**RN-08 — Versão vigente**
+
+Uma identidade de informe pode possuir múltiplas versões históricas, mas somente uma versão vigente.
+
+**RN-09 — Auditoria**
+
+Tentativas e execuções devem possuir registros suficientes para investigar seus resultados.
+
+**RN-10 — Concorrência**
+
+Importações concorrentes incompatíveis devem ser impedidas.
+
+**RN-11 — Recuperação**
+
+Uma interrupção abrupta não deve impedir indefinidamente novas importações legítimas.
+
+## 5. Requisitos não funcionais
 
 ### RNF-01 — Integridade
 
-O banco de dados deverá utilizar tipos, chaves e restrições compatíveis com as regras de integridade estabelecidas.
+O banco deve utilizar chaves, restrições e relacionamentos compatíveis com as regras de domínio.
 
-**Verificação:** testes de persistência e restrições.
+**Verificação:** testes de persistência e inspeção do esquema SQL.
 
-### RNF-02 — Confiabilidade
+### RNF-02 — Precisão financeira
 
-O sistema deverá apresentar comportamento previsível diante de registros inválidos, reprocessamentos e falhas controladas.
+Valores monetários e de cotas devem preservar a precisão decimal definida.
 
-**Verificação:** testes de cenários normais, limites e falhas.
+**Verificação:** testes de validação e persistência.
 
-### RNF-03 — Observabilidade
+### RNF-03 — Confiabilidade
 
-As execuções deverão produzir informações estruturadas que auxiliem no diagnóstico e acompanhamento do processamento.
+Falhas controladas devem produzir resultados previsíveis, com rollback e auditoria apropriados.
 
-**Verificação:** inspeção de logs e resultados de importação.
+**Verificação:** testes de falhas e transações.
 
-### RNF-04 — Desempenho
+### RNF-04 — Manutenibilidade
 
-O sistema deverá permitir a medição do tempo de processamento e do volume de registros tratados.
+O código deve possuir responsabilidades separadas entre leitura, validação, serviço de importação e persistência.
 
-Metas quantitativas serão estabelecidas após a obtenção de medições com arquivos reais.
+**Verificação:** revisão de arquitetura e testes automatizados.
 
-**Verificação:** execução de benchmarks documentados.
+### RNF-05 — Desempenho
 
-### RNF-05 — Manutenibilidade
+O tempo de processamento de arquivos completos deve ser mensurável.
 
-O código deverá possuir responsabilidades bem delimitadas, organização consistente e testes automatizados.
+Metas quantitativas serão definidas após a obtenção de benchmarks reais.
 
-**Verificação:** revisão de arquitetura, código e testes.
+**Verificação:** execução com arquivos da CVM e registro do tempo decorrido.
 
-### RNF-06 — Reprodutibilidade
+### RNF-06 — Observabilidade
 
-A aplicação e o PostgreSQL deverão poder ser iniciados em ambiente documentado com Docker Compose.
+O sistema deve registrar informações suficientes para diagnosticar execuções e falhas.
 
-**Verificação:** execução seguindo as instruções do README.
+O acompanhamento detalhado de progresso durante a importação ainda não está implementado.
 
-### RNF-07 — Segurança básica
+**Verificação:** auditoria, mensagens de erro e inspeção de execução.
 
-Credenciais e configurações sensíveis não deverão ser incorporadas ao código-fonte ou ao histórico do repositório.
+### RNF-07 — Segurança de configuração
 
-**Verificação:** revisão de configuração, arquivos versionados e logs.
+Credenciais não devem ser incorporadas ao código-fonte ou aos arquivos versionados.
 
-### RNF-08 — Integração contínua
+**Verificação:** revisão de `.gitignore`, `.env.example` e configuração do banco.
 
-O repositório deverá possuir um pipeline de integração contínua que execute verificações automatizadas.
+### RNF-08 — Reprodutibilidade
 
-**Verificação:** execução bem-sucedida do pipeline.
+Outro desenvolvedor deve conseguir instalar as dependências, configurar o banco e executar o importador seguindo a documentação.
 
----
+**Verificação:** instalação em ambiente configurado a partir das instruções do README.
 
-## 6. Premissas e Dependências
+### RNF-09 — Testabilidade
 
-- A CVM será a fonte oficial primária dos dados da V1.
-- A estrutura dos arquivos poderá sofrer alterações ao longo do tempo.
-- O esquema deverá ser validado antes da implementação definitiva do modelo.
-- A aplicação deverá tratar dados públicos de maneira responsável.
-- A disponibilidade da fonte externa não estará sob controle do FundWatch.
-- A execução local deverá ser reproduzível por outro desenvolvedor.
+O sistema deve possuir testes automatizados de unidade e integração.
 
-## 7. Decisões Técnicas Pendentes
+**Verificação:** execução da suíte com pytest.
 
-As seguintes decisões serão resolvidas durante a análise e a implementação:
+## 6. Tecnologias e dependências
 
-| ID    | Decisão pendente                                    | Dependência                         |
-| ----- | --------------------------------------------------- | ----------------------------------- |
-| DP-01 | Definição da chave lógica dos registros             | Análise do esquema e dos dados      |
-| DP-02 | Política de atualização de registros reapresentados | Identidade e comportamento da fonte |
-| DP-03 | Tratamento transacional de falhas parciais          | Estratégia de persistência          |
-| DP-04 | Estratégia de leitura e processamento de arquivos   | Volume e medições reais             |
-| DP-05 | Contratos e caminhos dos endpoints                  | Modelagem do domínio e casos de uso |
-| DP-06 | Metas quantitativas de desempenho                   | Benchmarks iniciais                 |
+A implementação v0.1 utiliza:
 
-Decisões arquiteturais relevantes deverão ser documentadas com contexto, alternativas consideradas e justificativa.
+| Tecnologia    | Responsabilidade                       |
+| ------------- | -------------------------------------- |
+| Python        | Implementação backend                  |
+| PostgreSQL    | Persistência relacional                |
+| Psycopg 3     | Comunicação com PostgreSQL             |
+| pytest        | Testes automatizados                   |
+| python-dotenv | Configuração por variáveis de ambiente |
+| Git/GitHub    | Versionamento e colaboração            |
 
----
+A versão de desenvolvimento utiliza Python 3.14 e PostgreSQL 18.6.
 
-## 8. Critério Geral de Conclusão da V1
+O projeto declara suporte a Python 3.11 ou superior em sua configuração de empacotamento.
 
-A V1 somente será considerada concluída quando seus requisitos obrigatórios estiverem implementados, testados e documentados.
+## 7. Evolução posterior
 
-A validação deverá incluir:
+Após a conclusão da v0.1, poderão ser desenvolvidos:
 
-- Importação de dados reais da CVM.
-- Tratamento verificável de registros inválidos.
-- Persistência e consulta dos dados.
-- Reimportação sem duplicidades.
-- Tratamento documentado de atualizações.
-- Testes unitários e de integração.
-- Execução reproduzível com Docker Compose.
+- API REST com FastAPI.
+- Endpoints de consulta histórica.
+- Download automático dos arquivos da CVM.
+- Agendamento de importações.
+- Monitoramento de progresso.
+- Otimizações de processamento em lote.
+- Docker Compose.
 - Pipeline de integração contínua.
-- README com instalação, exemplos de uso, arquitetura e limitações.
+- Camada analítica e visualizações financeiras.
 
-A conclusão da V1 não implica validação em ambiente de produção ou adoção por instituições financeiras.
-
----
+Essas funcionalidades não fazem parte dos critérios obrigatórios da v0.1, exceto quando incorporadas formalmente ao seu escopo.
 
 ## 9. Referências
 
-- [FundWatch — Definição do Problema](problem-statement.md)
-- [CVM — Informe Diário de Fundos de Investimento](https://dados.cvm.gov.br/dataset/fi-doc-inf_diario)
+- [Definição do Problema](problem-statement.md)
+- [Análise do Domínio](../domain/analysis.md)
+- [Modelo Relacional](../domain/data-model.md)
+- [CVM — Informes Diários de Fundos de Investimento](https://dados.cvm.gov.br/dataset/fi-doc-inf_diario)
 
-A documentação de domínio, arquitetura, esquema de dados e decisões técnicas complementará esta especificação conforme o projeto evoluir.
+---
+
+**Nota:** os requisitos refletem a implementação conhecida do FundWatch v0.1 em novembro de 2026. Os estados de validação deverão ser atualizados conforme os testes operacionais forem concluídos.

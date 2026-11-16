@@ -1,5 +1,5 @@
-from pathlib import Path
 import hashlib
+from pathlib import Path
 
 
 def calculate_file_hash(file_path: Path) -> str:
@@ -16,9 +16,3 @@ def calculate_file_hash(file_path: Path) -> str:
             hash_value.update(chunk)
 
     return hash_value.hexdigest()
-
-
-if __name__ == "__main__":
-    file_path = Path("data/raw/inf_diario_fi_202610.csv")
-    result = calculate_file_hash(file_path)
-    print(result)

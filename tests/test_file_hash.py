@@ -1,4 +1,4 @@
-from src.fundwatch.file_hash import calculate_file_hash
+from fundwatch.file_hash import calculate_file_hash
 
 
 def test_identical_files_produce_same_hash(tmp_path):

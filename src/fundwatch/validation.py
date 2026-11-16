@@ -38,19 +38,18 @@ def parse_decimal(value: str, required: bool = True):
 
 
 def parse_integer(value: str, required: bool = True):
-    if value == "" and required:
-        raise ValueError("Integer value is required.")
+    if value == "":
+        if required:
+            raise ValueError("Integer value is required.")
 
-    if value == "" and required is False:
         return None
 
-    if value:
-        try:
-            number = int(value)
-        except ValueError:
-            raise ValueError("Invalid integer value.")
+    try:
+        number = int(value)
+    except ValueError as exc:
+        raise ValueError("Invalid integer value.") from exc
 
-        if number < 0:
-            raise ValueError("Integer value cannot be negative.")
+    if number < 0:
+        raise ValueError("Integer value cannot be negative.")
 
-        return number
+    return number

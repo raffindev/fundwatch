@@ -6,8 +6,8 @@ from dotenv import load_dotenv
 
 def get_connection(
     db_name: str | None = None,
-    schema: str | None = None,
-):
+    schema: str = "fundwatch",
+) -> psycopg.Connection:
     load_dotenv()
 
     db_host = os.getenv("DB_HOST")
@@ -16,13 +16,18 @@ def get_connection(
     db_user = os.getenv("DB_USER")
     db_password = os.getenv("DB_PASSWORD")
 
+    allowed_schemas = {"fundwatch", "fundwatch_test"}
+
+    if schema not in allowed_schemas:
+        raise ValueError(f"Invalid database schema: {schema}")
+
     connection = psycopg.connect(
         host=db_host,
         port=db_port,
         dbname=database_name,
         user=db_user,
         password=db_password,
-        options="-c search_path=fundwatch_test" if schema == "fundwatch_test" else None,
+        options=f"-c search_path={schema}",
     )
 
     return connection

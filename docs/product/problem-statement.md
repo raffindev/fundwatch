@@ -1,175 +1,264 @@
 # FundWatch — Definição do Problema
 
 **Projeto:** FundWatch  
-**Categoria:** Backend Python / Engenharia de Dados Financeiros  
-**Documento:** Definição do Problema  
-**Status:** Definição inicial — V1
+**Categoria:** Python Backend / Engenharia de Dados Financeiros  
+**Versão:** 0.1  
+**Status:** Implementação em validação  
+**Fonte principal:** Comissão de Valores Mobiliários (CVM)
 
 ---
 
 ## 1. Contexto
 
-O mercado de fundos de investimento produz informações periódicas utilizadas por analistas, instituições financeiras e aplicações que acompanham a evolução de fundos ao longo do tempo.
+O mercado brasileiro de fundos de investimento produz informações financeiras periódicas utilizadas por analistas, instituições financeiras, desenvolvedores e aplicações especializadas.
 
-No Brasil, a Comissão de Valores Mobiliários (CVM) disponibiliza conjuntos de dados públicos contendo informações sobre fundos de investimento, incluindo patrimônio líquido, valor das cotas, captações, resgates e quantidade de cotistas.
+A Comissão de Valores Mobiliários (CVM) disponibiliza dados públicos sobre fundos de investimento, incluindo indicadores como:
 
-Essas informações são disponibilizadas em arquivos que precisam ser obtidos, interpretados e consolidados para permitir análises históricas.
+- Patrimônio líquido.
+- Valor da cota.
+- Valor total.
+- Captações diárias.
+- Resgates diários.
+- Quantidade de cotistas.
 
-Embora os dados estejam publicamente disponíveis, sua utilização em aplicações exige processos de ingestão, validação, armazenamento e consulta.
+Esses dados são publicados em arquivos que precisam ser interpretados, validados e consolidados para permitir seu uso em aplicações e análises históricas.
 
-O FundWatch nasce como uma proposta de solução backend para esse processo, utilizando dados públicos oficiais como fonte primária.
+A disponibilidade pública dos arquivos não elimina os desafios de processamento, consistência, armazenamento e rastreabilidade.
 
-**Fonte de referência:**  
-[Informe Diário de Fundos de Investimento — CVM](https://dados.cvm.gov.br/dataset/fi-doc-inf_diario)
+O FundWatch foi concebido para enfrentar esses desafios por meio de uma aplicação backend desenvolvida em Python e PostgreSQL.
 
-## 2. Problema Central
+## 2. Problema central
 
-O consumo recorrente de dados públicos de fundos de investimento pode exigir atividades repetitivas de obtenção, leitura, validação e consolidação de arquivos.
+**Como transformar informes diários públicos da CVM em dados financeiros estruturados, consistentes, auditáveis e reutilizáveis, sem perder o histórico de alterações?**
 
-Quando essas atividades dependem de operações manuais, surgem dificuldades relacionadas à eficiência operacional, confiabilidade dos dados e manutenção de históricos consistentes.
+O consumo recorrente desses arquivos apresenta desafios técnicos e operacionais.
 
-Entre os principais problemas identificados estão:
+### 2.1. Volume de dados
 
-- **Processamento repetitivo:** necessidade de obter e tratar periodicamente novos arquivos.
-- **Volume de informações:** dificuldade de localizar e consultar registros específicos em conjuntos extensos de dados.
-- **Inconsistências:** possibilidade de registros incompletos, inválidos ou incompatíveis com a estrutura esperada.
-- **Duplicidade:** risco de armazenar informações repetidas durante reimportações.
-- **Atualizações da fonte:** necessidade de tratar registros corrigidos ou reapresentados.
-- **Rastreabilidade:** dificuldade de identificar quais registros foram processados, rejeitados ou atualizados.
-- **Consulta histórica:** necessidade de consolidar informações de diferentes períodos para acompanhar a evolução dos fundos.
+Arquivos mensais podem conter centenas de milhares de registros.
 
-O problema central não é a ausência de dados, mas a necessidade de transformá-los em informações estruturadas, persistentes, verificáveis e acessíveis.
+Na análise exploratória do arquivo `inf_diario_fi_202610.csv`, foram identificados 537.880 registros.
 
-## 3. Público-Alvo
+O processamento desse volume exige uma estratégia de leitura e persistência que preserve a integridade dos dados e permita avaliar o desempenho da aplicação.
 
-O FundWatch é direcionado principalmente a contextos em que informações públicas sobre fundos de investimento precisam ser processadas e consultadas de maneira recorrente.
+### 2.2. Qualidade e validação
 
-### 3.1 Analistas de dados financeiros
+Dados externos podem apresentar campos ausentes, valores incompatíveis ou formatos inesperados.
 
-Profissionais que precisam consultar informações históricas de fundos, comparar períodos e identificar alterações nos dados publicados.
+Sem validação, essas inconsistências podem comprometer o armazenamento e as consultas posteriores.
 
-### 3.2 Equipes de tecnologia de instituições financeiras
+### 2.3. Duplicidade
 
-Desenvolvedores e equipes responsáveis por integrar dados externos a sistemas internos, mantendo consistência, rastreabilidade e disponibilidade das informações.
+Reimportações podem gerar registros repetidos quando não existe um mecanismo consistente de identificação.
 
-### 3.3 Aplicações consumidoras de dados
+A duplicação de informes pode distorcer análises e comprometer a confiabilidade do histórico.
 
-Sistemas que necessitam acessar informações históricas estruturadas por meio de uma interface programática, sem implementar individualmente todo o processo de leitura e consolidação dos arquivos originais.
+### 2.4. Correções e reapresentações
 
-**Delimitação:** esses públicos representam usuários e consumidores potenciais da solução. Ainda não foram realizadas entrevistas ou validações de uso com instituições reais.
+Informações referentes a períodos anteriores podem ser corrigidas ou reapresentadas.
 
-## 4. Impactos Operacionais
+Uma aplicação que simplesmente substitui valores anteriores perde a capacidade de investigar mudanças.
 
-Os problemas identificados podem produzir diferentes consequências operacionais.
+### 2.5. Rastreabilidade
 
-### 4.1 Aumento do esforço manual
+Sem auditoria, torna-se difícil responder a perguntas como:
 
-A repetição de atividades de coleta, preparação e consolidação exige tempo que poderia ser destinado à análise dos dados.
+- Qual arquivo originou determinado processamento?
+- Quando a importação foi executada?
+- A execução terminou com sucesso?
+- Por que uma tentativa foi recusada?
+- Quais informações foram modificadas?
 
-### 4.2 Risco de informações inconsistentes
+### 2.6. Consulta histórica
 
-Registros inválidos, duplicados ou incorretamente interpretados podem comprometer consultas e análises posteriores.
+A utilização recorrente de arquivos isolados dificulta a construção de uma base histórica consistente.
 
-### 4.3 Dificuldade de investigação de falhas
+Aplicações consumidoras precisam de dados estruturados que possam ser consultados sem repetir todo o processamento da fonte original.
 
-Sem um histórico estruturado de processamento, pode ser difícil determinar por que determinado registro não foi importado ou por que uma informação foi alterada.
+## 3. Público-alvo
 
-### 4.4 Dificuldade de manutenção do histórico
+O FundWatch é direcionado a contextos em que dados públicos de fundos de investimento precisam ser processados e reutilizados.
 
-Arquivos publicados em períodos distintos precisam ser consolidados de maneira consistente, considerando possíveis correções e reapresentações.
+### 3.1. Desenvolvedores backend
 
-### 4.5 Dependência do formato original
+Profissionais que desenvolvem sistemas de ingestão de dados, integrações financeiras e aplicações orientadas a bancos de dados.
 
-Aplicações que consomem diretamente os arquivos ficam responsáveis por interpretar a estrutura da fonte, implementar validações e administrar atualizações.
+### 3.2. Equipes de tecnologia de instituições financeiras
 
-Esses impactos constituem hipóteses operacionais fundamentadas nas características do problema. Sua magnitude deverá ser avaliada por meio de testes, medições e eventual utilização real do sistema.
+Equipes responsáveis por incorporar dados públicos externos em sistemas internos, mantendo consistência e rastreabilidade.
 
-## 5. Solução Proposta
+### 3.3. Analistas de dados financeiros
 
-O FundWatch será um serviço backend desenvolvido em Python, responsável por transformar arquivos públicos oficiais da CVM em dados históricos estruturados e consultáveis.
+Profissionais que necessitam de informações históricas organizadas para consultas, comparações e análises.
 
-A primeira versão deverá oferecer as seguintes capacidades:
+### 3.4. Aplicações consumidoras
 
-1. **Ingestão:** obter e processar arquivos de dados a partir de uma origem configurável.
-2. **Validação:** verificar estrutura, tipos e consistência dos registros.
-3. **Tratamento de rejeições:** identificar registros inválidos e apresentar os motivos correspondentes.
-4. **Persistência:** armazenar dados históricos normalizados em PostgreSQL.
-5. **Idempotência:** permitir reprocessamentos sem gerar duplicidades.
-6. **Atualização:** aplicar uma política definida para registros corrigidos ou reapresentados.
-7. **Consultas:** disponibilizar informações históricas por fundo e intervalo de datas.
-8. **Rastreabilidade:** registrar resultados e falhas das execuções de importação.
-9. **Integração:** disponibilizar consultas por meio de uma API REST documentada.
+Sistemas que futuramente poderão consultar dados estruturados do FundWatch por meio de uma interface programática.
 
-### 5.1 Diretrizes técnicas
+**Delimitação:** esses públicos representam usuários potenciais. O projeto ainda não passou por validação comercial ou implantação em uma instituição financeira.
 
-A implementação deverá priorizar:
+## 4. Proposta de solução
 
-- Separação clara de responsabilidades.
-- Modelagem consistente do domínio.
-- Integridade e precisão dos dados financeiros.
-- Tratamento explícito de erros.
+O FundWatch é uma aplicação backend responsável por importar, validar, armazenar e rastrear informações financeiras publicadas pela CVM.
+
+Sua proposta é transformar arquivos de origem em uma base relacional consistente, com regras explícitas de integridade e histórico.
+
+A solução está organizada em cinco capacidades principais.
+
+### 4.1. Ingestão
+
+Ler arquivos CSV de informes diários da CVM, interpretando sua estrutura e seus registros.
+
+A versão 0.1 utiliza arquivos locais como entrada.
+
+### 4.2. Validação
+
+Verificar campos obrigatórios, datas, números decimais, inteiros e regras de identificação dos registros.
+
+Valores incompatíveis devem produzir mensagens de erro que permitam investigar o problema.
+
+### 4.3. Persistência
+
+Armazenar os dados no PostgreSQL, preservando os relacionamentos entre fundos, informes, importações e revisões.
+
+A persistência financeira utiliza controle transacional para evitar confirmações parciais diante de falhas.
+
+### 4.4. Integridade e histórico
+
+Impedir duplicações indevidas e identificar alterações em informes anteriormente armazenados.
+
+A solução deve distinguir registros novos, inalterados e revisados.
+
+### 4.5. Auditoria
+
+Registrar tentativas e execuções de importação, incluindo recusas, falhas e informações necessárias ao diagnóstico operacional.
+
+## 5. Escopo da versão 0.1
+
+A v0.1 representa a primeira entrega técnica do FundWatch.
+
+### 5.1. Capacidades implementadas
+
+- Leitura de arquivos CSV com Python.
+- Validação de registros e tipos de dados.
+- Identificação de fundos por CNPJ.
+- Persistência relacional em PostgreSQL.
+- Identificação de arquivos por hash SHA-256.
+- Controle de tentativas e execuções.
+- Prevenção de importações concorrentes incompatíveis.
+- Detecção de registros novos, inalterados e modificados.
+- Estrutura de revisões históricas.
+- Controle transacional da persistência.
+- Testes automatizados de unidade e integração.
+- Execução do importador por linha de comando.
+
+Essas capacidades estão implementadas, mas a validação operacional completa com o arquivo real permanece em andamento.
+
+### 5.2. Validações pendentes
+
+Antes de considerar a v0.1 concluída, será necessário:
+
+- Confirmar a importação integral de um arquivo real da CVM.
+- Conferir a quantidade de registros persistidos.
+- Verificar os resultados de auditoria.
+- Confirmar o comportamento de reimportação.
+- Validar revisões com dados modificados.
+- Medir o tempo de processamento.
+- Tratar com segurança execuções interrompidas.
+- Consolidar instruções reproduzíveis de instalação e execução.
+
+## 6. Evolução planejada
+
+A evolução do FundWatch poderá incluir:
+
+### 6.1. API REST
+
+Disponibilizar consultas de fundos e informes históricos por meio de endpoints documentados.
+
+FastAPI é a tecnologia prevista para essa camada.
+
+### 6.2. Automação da ingestão
+
+Permitir obtenção e processamento periódico dos arquivos da CVM, reduzindo a necessidade de execução manual.
+
+### 6.3. Consultas históricas
+
+Oferecer filtros por fundo, classe, subclasse e intervalo de datas.
+
+### 6.4. Observabilidade e desempenho
+
+Implementar indicadores de progresso, medições de desempenho e mecanismos de recuperação de execuções interrompidas.
+
+### 6.5. Ambiente reproduzível
+
+Evoluir a configuração do projeto para facilitar a instalação, os testes e a execução em diferentes ambientes.
+
+Docker Compose e integração contínua permanecem como possibilidades previstas no planejamento da V1.
+
+Essas funcionalidades não devem ser apresentadas como concluídas antes de sua implementação e validação.
+
+## 7. Limites da solução
+
+O FundWatch não pretende:
+
+- Executar operações de compra ou venda de ativos.
+- Recomendar investimentos.
+- Prever rentabilidade.
+- Gerenciar carteiras de clientes.
+- Integrar contas de corretoras.
+- Substituir plataformas de negociação ou custódia.
+- Garantir a correção de informações publicadas pela fonte original.
+
+A aplicação utiliza dados públicos oficiais, mas isso não representa certificação ou homologação pela CVM.
+
+O projeto também não possui, nesta etapa, evidências de adoção comercial ou utilização em produção por instituições financeiras.
+
+## 8. Critérios de sucesso da v0.1
+
+A primeira entrega será considerada tecnicamente validada quando:
+
+1. Um desenvolvedor conseguir configurar o ambiente seguindo a documentação.
+2. Um arquivo real compatível da CVM puder ser importado integralmente.
+3. Os dados forem persistidos com integridade no PostgreSQL.
+4. Arquivos já importados não produzirem duplicações.
+5. Registros alterados seguirem a política de revisão documentada.
+6. Falhas controladas preservarem a integridade financeira.
+7. O histórico de tentativas e execuções puder ser consultado.
+8. Os testes automatizados forem executados com sucesso.
+9. O README apresentar instalação, configuração, execução e limitações.
+10. O comportamento diante de interrupções abruptas estiver documentado e adequadamente tratado para a entrega.
+
+A conclusão da v0.1 não depende da disponibilização de uma API REST.
+
+## 9. Valor técnico e evolução do produto
+
+O FundWatch demonstra a aplicação de práticas de engenharia backend em um problema real de dados financeiros.
+
+Entre os principais aspectos técnicos estão:
+
+- Processamento de dados externos.
+- Validação e normalização.
+- Modelagem relacional.
+- Precisão numérica.
+- Transações e rollback.
+- Integridade referencial.
+- Idempotência.
+- Controle de concorrência.
+- Auditoria.
 - Testes automatizados.
-- Configuração segura da aplicação.
-- Execução reproduzível.
-- Documentação técnica e funcional.
+- Documentação técnica.
 
-### 5.2 Resultado esperado
+O objetivo é construir uma base confiável que possa evoluir para um serviço de consulta e integração de dados financeiros.
 
-Ao concluir a V1, deverá ser possível iniciar o ambiente, importar um arquivo real da CVM, verificar o resultado do processamento e consultar os registros persistidos por meio da API.
+A adoção real, os ganhos operacionais e os benefícios quantitativos deverão ser avaliados com evidências futuras.
 
-O comportamento deverá ser verificável por testes automatizados e por instruções de execução documentadas.
+## 10. Referências
 
-## 6. Limites da Solução
-
-A primeira versão terá escopo deliberadamente controlado.
-
-Não fazem parte da V1:
-
-- Autenticação e gerenciamento de usuários.
-- Controle avançado de permissões.
-- Dashboard financeiro elaborado.
-- Recomendações de investimento.
-- Previsões de preços ou rentabilidade.
-- Execução de ordens financeiras.
-- Integração com contas de corretoras.
-- Alertas automáticos.
-- Infraestrutura distribuída de alta complexidade.
-
-O FundWatch não pretende substituir sistemas de negociação, custódia, gestão de carteiras ou serviços especializados de análise financeira.
-
-A utilização de dados públicos oficiais não implica certificação, homologação ou conformidade regulatória da aplicação.
-
-Funcionalidades adicionais poderão ser avaliadas após a conclusão e validação da primeira versão.
+- [CVM — Informes Diários de Fundos de Investimento](https://dados.cvm.gov.br/dataset/fi-doc-inf_diario)
+- [Análise do Domínio](../domain/analysis.md)
+- [Modelo Relacional](../domain/data-model.md)
+- [Requisitos do Sistema](requirements.md)
 
 ---
 
-## 7. Critérios de Sucesso da V1
-
-A primeira versão será considerada funcional quando:
-
-- Um desenvolvedor conseguir configurar e executar o projeto seguindo a documentação.
-- Um arquivo real da CVM puder ser importado e processado.
-- Registros inválidos forem identificados com motivos verificáveis.
-- Dados válidos forem armazenados com integridade.
-- Reimportações não produzirem registros duplicados.
-- Correções de dados seguirem uma política documentada.
-- Consultas históricas estiverem disponíveis por API REST.
-- Testes automatizados cobrirem comportamentos normais e situações de falha.
-- A aplicação e o banco puderem ser iniciados com Docker Compose.
-- Um pipeline de integração contínua executar os testes.
-- O README apresentar claramente a finalidade, a arquitetura, a instalação, as limitações e os exemplos de uso.
-
-O sucesso técnico será demonstrado por funcionalidades executáveis e evidências verificáveis.
-
-Ganhos operacionais, adoção por usuários e resultados de produção somente serão declarados quando existirem medições ou evidências correspondentes.
-
----
-
-## 8. Referências
-
-**Comissão de Valores Mobiliários (CVM)**  
-Conjunto de dados: Informe Diário de Fundos de Investimento  
-https://dados.cvm.gov.br/dataset/fi-doc-inf_diario
-
-**Documentação complementar do projeto:**  
-Os requisitos funcionais, regras de negócio, decisões arquiteturais e detalhes da modelagem serão mantidos em documentos específicos, evitando duplicação desnecessária neste documento.
+**Nota:** este documento representa o posicionamento e o escopo técnico do FundWatch v0.1 em novembro de 2026. Funcionalidades planejadas são apresentadas separadamente das capacidades implementadas.
